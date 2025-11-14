@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "598128980583",
+    "project_id": "aquapure-delivery",
+    "storage_bucket": "aquapure-delivery.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:598128980583:android:cd262b9fc05b77e3f31ac2",
+        "android_client_info": {
+          "package_name": "com.aquapure.aquapure_delivery"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCJmZu01qxjMggRjHdsSVNSpdvHZN7D6Fs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
