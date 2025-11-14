@@ -50,7 +50,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         print('❌ Admin login failed');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Invalid credentials. Use: aquapure / admin2024'),
+            content: Text('Invalid credentials'),
             backgroundColor: Colors.red,
           ),
         );
@@ -182,7 +182,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Default: aquapure / admin2024',
+                'Default: taskeen / admin2025',
                 style: TextStyle(
                   color: Colors.grey,
                   fontSize: 12,

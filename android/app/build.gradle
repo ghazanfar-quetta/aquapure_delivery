@@ -26,7 +26,7 @@ if (flutterVersionName == null) {
 android {
     namespace "com.aquapure.aquapure_delivery"
     compileSdk 36  // CHANGED: from 34 to 36
-    ndkVersion "27.0.12077973"  // ADDED: NDK version
+
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -47,6 +47,7 @@ android {
         targetSdk 36  // CHANGED: from 34 to 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
+        ndkVersion "27.0.12077973"  // ADDED: NDK version
     }
 
     buildTypes {

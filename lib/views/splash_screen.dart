@@ -57,11 +57,13 @@ class _SplashScreenState extends State<SplashScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // Water drop container with shadow
+              // Replace the Container widget (lines 52-69) with this:
               Container(
-                width: 120,
-                height: 120,
+                width: 300,
+                height: 300,
                 decoration: BoxDecoration(
-                  color: blueShade700,
+                  color:
+                      Colors.white, // Changed to white background for the image
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
@@ -71,15 +73,15 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.local_drink,
-                  size: 60,
-                  color: Colors.white,
+                child: ClipOval(
+                  child: Image.asset(
+                      'assets/images/splash.png', // Replace with your image filename
+                      fit: BoxFit.cover),
                 ),
               ),
               const SizedBox(height: 30),
               Text(
-                'AquaPure',
+                'Taskeen Pure',
                 style: TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.bold,
@@ -89,7 +91,7 @@ class _SplashScreenState extends State<SplashScreen>
               ),
               const SizedBox(height: 10),
               Text(
-                'Pure Mineral Water',
+                'Pure Mineral & Drinking Water',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.blue.shade600,

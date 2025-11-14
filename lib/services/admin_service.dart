@@ -5,8 +5,8 @@ class AdminService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Predefined admin credentials - change these to whatever you want
-  static const String _predefinedUsername = 'aquapure';
-  static const String _predefinedPassword = 'admin2024';
+  static const String _predefinedUsername = 'taskeen';
+  static const String _predefinedPassword = 'admin2025';
   static const String _adminCredentialsKey = 'admin_credentials_initialized';
 
   // Initialize admin credentials (run once)
