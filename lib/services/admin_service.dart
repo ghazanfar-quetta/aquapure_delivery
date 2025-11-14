@@ -4,10 +4,218 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class AdminService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Predefined admin credentials - change these to whatever you want
+  // Predefined admin credentials
   static const String _predefinedUsername = 'taskeen';
   static const String _predefinedPassword = 'admin2025';
   static const String _adminCredentialsKey = 'admin_credentials_initialized';
+
+  Future<Map<String, dynamic>> getProductWiseReport(
+      DateTime startDate, DateTime endDate) async {
+    try {
+      // Get all products for reference
+      final productsSnapshot =
+          await FirebaseFirestore.instance.collection('products').get();
+
+      final productsMap = <String, Map<String, dynamic>>{};
+      for (var doc in productsSnapshot.docs) {
+        productsMap[doc.id] = {...doc.data(), 'id': doc.id};
+      }
+
+      // Get all orders (no date filtering since createdAt is null)
+      final allOrdersQuery =
+          await FirebaseFirestore.instance.collection('orders').get();
+
+      final orders = allOrdersQuery.docs;
+
+      if (orders.isEmpty) {
+        return {
+          'products': [],
+          'totalRevenue': 0,
+          'totalOrders': 0,
+          'productCount': 0,
+        };
+      }
+
+      // Process product-wise data
+      Map<String, dynamic> productData = {};
+      double totalRevenue = 0;
+      int totalOrders = orders.length;
+
+      for (var order in orders) {
+        final orderData = order.data();
+        final items = orderData['items'] as List<dynamic>? ?? [];
+
+        if (items.isEmpty) continue;
+
+        for (var item in items) {
+          final productId = item['productId'] ?? item['id'] ?? '';
+          if (productId.isEmpty) continue;
+
+          final product = productsMap[productId];
+          if (product == null) continue;
+
+          final productName = product['name'] ?? 'Unknown Product';
+          final category = product['category'] ?? 'Uncategorized';
+          final quantity = (item['quantity'] ?? item['qty'] ?? 1) as int;
+          final price = (item['price'] ?? product['price'] ?? 0).toDouble();
+          final itemRevenue = quantity * price;
+
+          totalRevenue += itemRevenue;
+
+          if (productData[productId] == null) {
+            productData[productId] = {
+              'name': productName,
+              'category': category,
+              'quantity': quantity,
+              'revenue': itemRevenue,
+              'orders': 1,
+            };
+          } else {
+            productData[productId]['quantity'] += quantity;
+            productData[productId]['revenue'] += itemRevenue;
+            productData[productId]['orders'] += 1;
+          }
+        }
+      }
+
+      final productList = productData.values.toList();
+      productList.sort(
+          (a, b) => (b['revenue'] as double).compareTo(a['revenue'] as double));
+
+      return {
+        'products': productList,
+        'totalRevenue': totalRevenue,
+        'totalOrders': totalOrders,
+        'productCount': productList.length,
+      };
+    } catch (e) {
+      throw Exception('Failed to generate product-wise report: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getCategoryWiseReport(
+      DateTime startDate, DateTime endDate) async {
+    try {
+      // Get all products for category information
+      final productsSnapshot =
+          await FirebaseFirestore.instance.collection('products').get();
+
+      final productsMap = <String, Map<String, dynamic>>{};
+      for (var doc in productsSnapshot.docs) {
+        productsMap[doc.id] = {...doc.data(), 'id': doc.id};
+      }
+
+      // Get all orders (no date filtering since createdAt is null)
+      final allOrdersQuery =
+          await FirebaseFirestore.instance.collection('orders').get();
+
+      final orders = allOrdersQuery.docs;
+
+      if (orders.isEmpty) {
+        return {
+          'categories': [],
+          'totalRevenue': 0,
+          'totalOrders': 0,
+          'categoryCount': 0,
+        };
+      }
+
+      // Process category-wise data
+      Map<String, dynamic> categoryData = {};
+      double totalRevenue = 0;
+      int totalOrders = orders.length;
+
+      for (var order in orders) {
+        final orderData = order.data();
+        final items = orderData['items'] as List<dynamic>? ?? [];
+
+        for (var item in items) {
+          final productId = item['productId'] ?? item['id'] ?? '';
+          if (productId.isEmpty) continue;
+
+          final product = productsMap[productId];
+          if (product == null) continue;
+
+          final category = product['category'] ?? 'Uncategorized';
+          final quantity = (item['quantity'] ?? item['qty'] ?? 1) as int;
+          final price = (item['price'] ?? product['price'] ?? 0).toDouble();
+          final itemRevenue = quantity * price;
+
+          totalRevenue += itemRevenue;
+
+          if (categoryData[category] == null) {
+            categoryData[category] = {
+              'name': category,
+              'quantity': quantity,
+              'revenue': itemRevenue,
+              'orders': 1,
+              'products': 1,
+            };
+          } else {
+            categoryData[category]['quantity'] += quantity;
+            categoryData[category]['revenue'] += itemRevenue;
+            categoryData[category]['orders'] += 1;
+            categoryData[category]['products'] += 1;
+          }
+        }
+      }
+
+      final categoryList = categoryData.values.toList();
+      categoryList.sort(
+          (a, b) => (b['revenue'] as double).compareTo(a['revenue'] as double));
+
+      return {
+        'categories': categoryList,
+        'totalRevenue': totalRevenue,
+        'totalOrders': totalOrders,
+        'categoryCount': categoryList.length,
+      };
+    } catch (e) {
+      throw Exception('Failed to generate category-wise report: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getSalesReport(
+      DateTime startDate, DateTime endDate) async {
+    try {
+      // Get all orders (no date filtering since createdAt is null)
+      final allOrdersQuery =
+          await FirebaseFirestore.instance.collection('orders').get();
+
+      final orders = allOrdersQuery.docs;
+
+      double totalRevenue = 0;
+      int totalOrders = orders.length;
+      int totalItems = 0;
+
+      for (var order in orders) {
+        final orderData = order.data();
+        final items = orderData['items'] as List<dynamic>? ?? [];
+        double orderTotal = 0;
+
+        for (var item in items) {
+          final quantity = (item['quantity'] ?? 0) as int;
+          final price = (item['price'] ?? 0).toDouble();
+          orderTotal += quantity * price;
+          totalItems += quantity;
+        }
+
+        totalRevenue += orderTotal;
+      }
+
+      final averageOrderValue =
+          orders.isNotEmpty ? totalRevenue / orders.length : 0;
+
+      return {
+        'totalRevenue': totalRevenue,
+        'totalOrders': totalOrders,
+        'totalItems': totalItems,
+        'averageOrderValue': averageOrderValue,
+      };
+    } catch (e) {
+      throw Exception('Failed to generate sales report: $e');
+    }
+  }
 
   // Initialize admin credentials (run once)
   Future<void> _initializeAdminCredentials() async {
@@ -16,34 +224,19 @@ class AdminService {
       final isInitialized = prefs.getBool(_adminCredentialsKey) ?? false;
 
       if (!isInitialized) {
-        // Store that we've initialized the credentials
         await prefs.setBool(_adminCredentialsKey, true);
-        print('✅ Predefined admin credentials set: $_predefinedUsername');
       }
     } catch (e) {
-      print('❌ Error initializing admin credentials: $e');
+      print('Error initializing admin credentials: $e');
     }
   }
 
   // Verify admin login
   Future<bool> verifyAdminLogin(String username, String password) async {
     try {
-      // Ensure credentials are initialized
       await _initializeAdminCredentials();
-
-      // Use predefined credentials
-      final isValid =
-          username == _predefinedUsername && password == _predefinedPassword;
-
-      print('🔐 Login attempt: $username - Valid: $isValid');
-      print(
-          '💡 Predefined credentials: $_predefinedUsername / $_predefinedPassword');
-
-      return isValid;
+      return username == _predefinedUsername && password == _predefinedPassword;
     } catch (e) {
-      print('❌ Error verifying admin login: $e');
-
-      // Fallback: check against predefined credentials even if SharedPreferences fails
       return username == _predefinedUsername && password == _predefinedPassword;
     }
   }
@@ -54,14 +247,10 @@ class AdminService {
     try {
       final isValid = await verifyAdminLogin(oldUsername, oldPassword);
       if (isValid) {
-        // In a real app, you would update the predefined values
-        // For now, we'll just log the request
-        print('✅ Admin credentials update requested: $newUsername');
         return true;
       }
       return false;
     } catch (e) {
-      print('❌ Error updating admin credentials: $e');
       return false;
     }
   }
@@ -93,8 +282,7 @@ class AdminService {
         };
       }).toList();
     } catch (e) {
-      print('Error getting products: $e');
-      rethrow;
+      throw Exception('Failed to get products: $e');
     }
   }
 
@@ -134,10 +322,7 @@ class AdminService {
   // Get all orders for management
   Future<List<Map<String, dynamic>>> getAllOrders() async {
     try {
-      final snapshot = await _firestore
-          .collection('orders')
-          .orderBy('orderDate', descending: true)
-          .get();
+      final snapshot = await _firestore.collection('orders').get();
 
       return snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>? ?? {};
@@ -147,8 +332,7 @@ class AdminService {
         };
       }).toList();
     } catch (e) {
-      print('Error getting orders: $e');
-      rethrow;
+      throw Exception('Failed to get orders: $e');
     }
   }
 
@@ -164,113 +348,40 @@ class AdminService {
   Future<Map<String, dynamic>> getOrderStatistics() async {
     try {
       final ordersSnapshot = await _firestore.collection('orders').get();
-      final now = DateTime.now();
-      final todayStart = DateTime(now.year, now.month, now.day);
-      final weekStart = todayStart.subtract(const Duration(days: 7));
 
-      int todayOrders = 0;
-      int weekOrders = 0;
       int pendingOrders = 0;
       int deliveredOrders = 0;
+      int confirmedOrders = 0;
+      int outForDeliveryOrders = 0;
+      int cancelledOrders = 0;
 
       for (final doc in ordersSnapshot.docs) {
         final order = doc.data() as Map<String, dynamic>? ?? {};
-        final orderDate =
-            DateTime.fromMillisecondsSinceEpoch(order['orderDate'] ?? 0);
         final status = order['status'] as String? ?? 'pending';
 
-        // Today's orders
-        if (orderDate.isAfter(todayStart)) {
-          todayOrders++;
-        }
-
-        // This week's orders
-        if (orderDate.isAfter(weekStart)) {
-          weekOrders++;
-        }
-
-        // Status counts
         if (status == 'pending') {
           pendingOrders++;
         } else if (status == 'delivered') {
           deliveredOrders++;
+        } else if (status == 'confirmed') {
+          confirmedOrders++;
+        } else if (status == 'out_for_delivery') {
+          outForDeliveryOrders++;
+        } else if (status == 'cancelled') {
+          cancelledOrders++;
         }
       }
 
       return {
         'totalOrders': ordersSnapshot.size,
-        'todayOrders': todayOrders,
-        'weekOrders': weekOrders,
         'pendingOrders': pendingOrders,
         'deliveredOrders': deliveredOrders,
+        'confirmedOrders': confirmedOrders,
+        'outForDeliveryOrders': outForDeliveryOrders,
+        'cancelledOrders': cancelledOrders,
       };
     } catch (e) {
-      print('Error getting order statistics: $e');
-      rethrow;
-    }
-  }
-
-  // REPORTS METHODS
-
-  // Get sales reports
-  Future<Map<String, dynamic>> getSalesReport(
-      DateTime startDate, DateTime endDate,
-      {String? category}) async {
-    try {
-      Query query = _firestore
-          .collection('orders')
-          .where('orderDate',
-              isGreaterThanOrEqualTo: startDate.millisecondsSinceEpoch)
-          .where('orderDate',
-              isLessThanOrEqualTo: endDate.millisecondsSinceEpoch);
-
-      final snapshot = await query.get();
-
-      double totalRevenue = 0;
-      int totalOrders = 0;
-      int totalItems = 0;
-      Map<String, double> categoryRevenue = {};
-      Map<String, int> categoryOrders = {};
-
-      for (final doc in snapshot.docs) {
-        final order = doc.data() as Map<String, dynamic>? ?? {};
-        final amount = (order['totalAmount'] ?? 0).toDouble();
-        final items = List<dynamic>.from(order['items'] ?? []);
-
-        totalRevenue += amount;
-        totalOrders++;
-        totalItems += items.fold(0, (sum, item) {
-          final itemMap = item as Map<String, dynamic>? ?? {};
-          return sum + (itemMap['quantity'] as int? ?? 0);
-        });
-
-        // Category-wise analysis
-        for (final item in items) {
-          final itemMap = item as Map<String, dynamic>? ?? {};
-          final itemCategory = itemMap['category'] as String? ?? 'Unknown';
-          final itemPrice = (itemMap['price'] as double? ?? 0.0) *
-              (itemMap['quantity'] as int? ?? 1);
-
-          categoryRevenue[itemCategory] =
-              (categoryRevenue[itemCategory] ?? 0) + itemPrice;
-          categoryOrders[itemCategory] =
-              (categoryOrders[itemCategory] ?? 0) + 1;
-        }
-      }
-
-      return {
-        'totalRevenue': totalRevenue,
-        'totalOrders': totalOrders,
-        'totalItems': totalItems,
-        'averageOrderValue': totalOrders > 0 ? totalRevenue / totalOrders : 0,
-        'categoryRevenue': categoryRevenue,
-        'categoryOrders': categoryOrders,
-        'startDate': startDate,
-        'endDate': endDate,
-      };
-    } catch (e) {
-      print('Error generating sales report: $e');
-      rethrow;
+      throw Exception('Failed to get order statistics: $e');
     }
   }
 
@@ -282,7 +393,6 @@ class AdminService {
       final usersSnapshot = await _firestore.collection('users').get();
       final ordersSnapshot = await _firestore.collection('orders').get();
 
-      // User analysis
       final totalUsers = usersSnapshot.size;
       final usersWithOrders = <String>{};
 
@@ -298,7 +408,6 @@ class AdminService {
       final conversionRate =
           totalUsers > 0 ? (activeUsers / totalUsers) * 100 : 0;
 
-      // Get user list with proper typing
       final userList = usersSnapshot.docs.map((doc) {
         return doc.data() as Map<String, dynamic>? ?? {};
       }).toList();
@@ -310,50 +419,37 @@ class AdminService {
         'userList': userList,
       };
     } catch (e) {
-      print('Error getting user statistics: $e');
-      rethrow;
+      throw Exception('Failed to get user statistics: $e');
     }
   }
 
   Future<void> updateUser(String userId, Map<String, dynamic> updates) async {
     try {
-      // Validate userId
       if (userId.isEmpty) {
         throw Exception('Invalid user ID');
       }
 
-      print('🔄 Updating user in Firestore: $userId');
-
-      // Create a safe updates map that EXCLUDES email and password
       final safeUpdates = <String, dynamic>{};
 
       updates.forEach((key, value) {
         if (value != null &&
             value.toString().isNotEmpty &&
             value.toString() != 'null') {
-          // ONLY include non-authentication fields
-          // EXCLUDE email and password to prevent login issues
           if (key != 'email' && key != 'password') {
             safeUpdates[key] = value.toString();
           }
         }
       });
 
-      // Add timestamp if provided, otherwise use server timestamp
       if (updates['updatedAt'] != null) {
         safeUpdates['updatedAt'] = updates['updatedAt'];
       } else {
         safeUpdates['updatedAt'] = FieldValue.serverTimestamp();
       }
 
-      // Update ONLY in Firestore
       await _firestore.collection('users').doc(userId).update(safeUpdates);
-
-      print('✅ User updated successfully in Firestore: $userId');
-      print('📋 Updated fields: ${safeUpdates.keys.toList()}');
     } catch (e) {
-      print('❌ Error updating user: $e');
-      rethrow;
+      throw Exception('Failed to update user: $e');
     }
   }
 
