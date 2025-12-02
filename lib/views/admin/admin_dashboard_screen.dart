@@ -5,6 +5,7 @@ import 'package:aquapure_delivery/views/admin/products_management_screen.dart';
 import 'package:aquapure_delivery/views/admin/orders_management_screen.dart';
 import 'package:aquapure_delivery/views/admin/users_management_screen.dart';
 import 'package:aquapure_delivery/views/admin/reports_screen.dart';
+import 'package:aquapure_delivery/views/auth/login_screen.dart'; // Add your regular login screen
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -16,6 +17,24 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final AdminService _adminService = AdminService();
   int _currentIndex = 0;
+  bool _isAdmin = true; // Assume admin until verified
+
+  @override
+  void initState() {
+    super.initState();
+    _verifyAdminStatus();
+  }
+
+  Future<void> _verifyAdminStatus() async {
+    final isAdmin = await _adminService.isCurrentUserAdmin();
+    if (!isAdmin && mounted) {
+      // Redirect to login if not admin
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    }
+  }
 
   final List<Widget> _screens = [
     const DashboardHomeScreen(),
@@ -24,6 +43,37 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     const UsersManagementScreen(),
     const ReportsScreen(),
   ];
+
+  Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _adminService.logoutAdmin();
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,15 +84,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: _showAdminSettings,
-          ),
+          // Display admin email if available
+          if (_adminService.getCurrentAdminEmail() != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Center(
+                child: Text(
+                  _adminService.getCurrentAdminEmail()!,
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+            ),
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () {
-              Navigator.pop(context);
-            },
+            onPressed: _logout,
+            tooltip: 'Logout',
           ),
         ],
       ),
@@ -51,6 +107,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
         type: BottomNavigationBarType.fixed,
+        selectedItemColor: Colors.blue.shade800,
+        unselectedItemColor: Colors.grey.shade600,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard),
@@ -71,32 +129,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.analytics),
             label: 'Reports',
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAdminSettings() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Admin Settings'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Username: ${_adminService.getCurrentAdminUsername()}'),
-              const SizedBox(height: 10),
-              const Text('Use the predefined credentials for login.'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
           ),
         ],
       ),

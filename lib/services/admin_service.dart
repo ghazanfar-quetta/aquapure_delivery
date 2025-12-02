@@ -1,13 +1,238 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AdminService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Predefined admin credentials
-  static const String _predefinedUsername = 'taskeen';
-  static const String _predefinedPassword = 'admin2025';
-  static const String _adminCredentialsKey = 'admin_credentials_initialized';
+  // ========= FIREBASE AUTH ADMIN METHODS =========
+
+  // Check if current user is admin via Firebase Auth claims
+  Future<bool> isCurrentUserAdmin() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        print('❌ No user logged in');
+        return false;
+      }
+
+      // Get fresh token to check claims
+      final idTokenResult = await user.getIdTokenResult(true);
+      final isAdmin = idTokenResult.claims?['admin'] == true;
+
+      print(
+          '🔍 Admin check: UID=${user.uid}, IsAdmin=$isAdmin, Claims=${idTokenResult.claims}');
+      return isAdmin;
+    } catch (e) {
+      print('❌ Error checking admin status: $e');
+      return false;
+    }
+  }
+
+  // Admin login with Firebase Auth
+  Future<bool> loginAdmin(String email, String password) async {
+    try {
+      print('🔐 Attempting admin login for: $email');
+
+      final userCredential = await _auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password.trim(),
+      );
+
+      print('✅ Firebase Auth login successful');
+      print('👤 User UID: ${userCredential.user?.uid}');
+
+      // Check admin claims
+      final idTokenResult = await userCredential.user!.getIdTokenResult(true);
+      final isAdmin = idTokenResult.claims?['admin'] == true;
+
+      print('🔑 Admin claims check: $isAdmin');
+      print('📋 Full claims: ${idTokenResult.claims}');
+
+      return isAdmin;
+    } catch (e) {
+      print('❌ Admin login error: $e');
+      rethrow;
+    }
+  }
+
+  // Admin logout
+  Future<void> logoutAdmin() async {
+    await _auth.signOut();
+    print('👋 Admin logged out');
+  }
+
+  // Get current admin info
+  Map<String, dynamic>? getCurrentAdminInfo() {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+
+    return {
+      'uid': user.uid,
+      'email': user.email,
+      'name': user.displayName,
+      'photoUrl': user.photoURL,
+    };
+  }
+
+  // Get current admin email
+  String? getCurrentAdminEmail() {
+    return _auth.currentUser?.email;
+  }
+
+  // ========= BACKWARD COMPATIBILITY METHODS =========
+
+  // Verify admin login (for backward compatibility)
+  // Remove or update the verifyAdminLogin method
+  Future<bool> verifyAdminLogin(String username, String password) async {
+    try {
+      // Only use Firebase Auth - no hardcoded fallback
+      if (username.contains('@')) {
+        return await loginAdmin(username, password);
+      }
+      return false; // Reject non-email logins
+    } catch (e) {
+      print('❌ Error in verifyAdminLogin: $e');
+      return false;
+    }
+  }
+
+// Remove hardcoded credentials from getPredefinedCredentials
+  Map<String, String> getPredefinedCredentials() {
+    return {
+      'info': 'Use Firebase Auth admin credentials',
+      'note': 'Contact system administrator for access',
+    };
+  }
+
+  // Get current admin username (for backward compatibility)
+  String getCurrentAdminUsername() {
+    final email = _auth.currentUser?.email;
+    if (email != null && email.contains('@')) {
+      return email.split('@')[0];
+    }
+    return 'taskeen'; // Fallback
+  }
+
+  // ========= PRODUCT MANAGEMENT METHODS =========
+
+  // Get all products from Firebase
+  Future<List<Map<String, dynamic>>> getAllProducts() async {
+    try {
+      final snapshot = await _firestore.collection('products').get();
+      return snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>? ?? {};
+        return {
+          'id': doc.id,
+          ...data,
+        };
+      }).toList();
+    } catch (e) {
+      throw Exception('Failed to get products: $e');
+    }
+  }
+
+  // Add product to Firebase
+  Future<void> addProduct(Map<String, dynamic> productData) async {
+    try {
+      await _firestore.collection('products').add({
+        ...productData,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to add product: $e');
+    }
+  }
+
+  // Update product in Firebase
+  Future<void> updateProduct(
+      String productId, Map<String, dynamic> productData) async {
+    try {
+      await _firestore.collection('products').doc(productId).update({
+        ...productData,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to update product: $e');
+    }
+  }
+
+  // Delete product from Firebase
+  Future<void> deleteProduct(String productId) async {
+    await _firestore.collection('products').doc(productId).delete();
+  }
+
+  // ========= ORDER MANAGEMENT METHODS =========
+
+  // Get all orders for management
+  Future<List<Map<String, dynamic>>> getAllOrders() async {
+    try {
+      final snapshot = await _firestore.collection('orders').get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>? ?? {};
+        return {
+          'id': doc.id,
+          ...data,
+        };
+      }).toList();
+    } catch (e) {
+      throw Exception('Failed to get orders: $e');
+    }
+  }
+
+  // Update order status
+  Future<void> updateOrderStatus(String orderId, String status) async {
+    await _firestore.collection('orders').doc(orderId).update({
+      'status': status,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // Get order statistics for dashboard
+  Future<Map<String, dynamic>> getOrderStatistics() async {
+    try {
+      final ordersSnapshot = await _firestore.collection('orders').get();
+
+      int pendingOrders = 0;
+      int deliveredOrders = 0;
+      int confirmedOrders = 0;
+      int outForDeliveryOrders = 0;
+      int cancelledOrders = 0;
+
+      for (final doc in ordersSnapshot.docs) {
+        final order = doc.data() as Map<String, dynamic>? ?? {};
+        final status = order['status'] as String? ?? 'pending';
+
+        if (status == 'pending') {
+          pendingOrders++;
+        } else if (status == 'delivered') {
+          deliveredOrders++;
+        } else if (status == 'confirmed') {
+          confirmedOrders++;
+        } else if (status == 'out_for_delivery') {
+          outForDeliveryOrders++;
+        } else if (status == 'cancelled') {
+          cancelledOrders++;
+        }
+      }
+
+      return {
+        'totalOrders': ordersSnapshot.size,
+        'pendingOrders': pendingOrders,
+        'deliveredOrders': deliveredOrders,
+        'confirmedOrders': confirmedOrders,
+        'outForDeliveryOrders': outForDeliveryOrders,
+        'cancelledOrders': cancelledOrders,
+      };
+    } catch (e) {
+      throw Exception('Failed to get order statistics: $e');
+    }
+  }
+
+  // ========= REPORT METHODS =========
 
   Future<Map<String, dynamic>> getProductWiseReport(
       DateTime startDate, DateTime endDate) async {
@@ -217,175 +442,7 @@ class AdminService {
     }
   }
 
-  // Initialize admin credentials (run once)
-  Future<void> _initializeAdminCredentials() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final isInitialized = prefs.getBool(_adminCredentialsKey) ?? false;
-
-      if (!isInitialized) {
-        await prefs.setBool(_adminCredentialsKey, true);
-      }
-    } catch (e) {
-      print('Error initializing admin credentials: $e');
-    }
-  }
-
-  // Verify admin login
-  Future<bool> verifyAdminLogin(String username, String password) async {
-    try {
-      await _initializeAdminCredentials();
-      return username == _predefinedUsername && password == _predefinedPassword;
-    } catch (e) {
-      return username == _predefinedUsername && password == _predefinedPassword;
-    }
-  }
-
-  // Update admin credentials
-  Future<bool> updateAdminCredentials(String oldUsername, String oldPassword,
-      String newUsername, String newPassword) async {
-    try {
-      final isValid = await verifyAdminLogin(oldUsername, oldPassword);
-      if (isValid) {
-        return true;
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  // Get current admin username
-  String getCurrentAdminUsername() {
-    return _predefinedUsername;
-  }
-
-  // Get predefined credentials (for display purposes)
-  Map<String, String> getPredefinedCredentials() {
-    return {
-      'username': _predefinedUsername,
-      'password': _predefinedPassword,
-    };
-  }
-
-  // PRODUCT MANAGEMENT METHODS
-
-  // Get all products from Firebase
-  Future<List<Map<String, dynamic>>> getAllProducts() async {
-    try {
-      final snapshot = await _firestore.collection('products').get();
-      return snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>? ?? {};
-        return {
-          'id': doc.id,
-          ...data,
-        };
-      }).toList();
-    } catch (e) {
-      throw Exception('Failed to get products: $e');
-    }
-  }
-
-  // Add product to Firebase
-  Future<void> addProduct(Map<String, dynamic> productData) async {
-    try {
-      await _firestore.collection('products').add({
-        ...productData,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      throw Exception('Failed to add product: $e');
-    }
-  }
-
-  // Update product in Firebase
-  Future<void> updateProduct(
-      String productId, Map<String, dynamic> productData) async {
-    try {
-      await _firestore.collection('products').doc(productId).update({
-        ...productData,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      throw Exception('Failed to update product: $e');
-    }
-  }
-
-  // Delete product from Firebase
-  Future<void> deleteProduct(String productId) async {
-    await _firestore.collection('products').doc(productId).delete();
-  }
-
-  // ORDER MANAGEMENT METHODS
-
-  // Get all orders for management
-  Future<List<Map<String, dynamic>>> getAllOrders() async {
-    try {
-      final snapshot = await _firestore.collection('orders').get();
-
-      return snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>? ?? {};
-        return {
-          'id': doc.id,
-          ...data,
-        };
-      }).toList();
-    } catch (e) {
-      throw Exception('Failed to get orders: $e');
-    }
-  }
-
-  // Update order status
-  Future<void> updateOrderStatus(String orderId, String status) async {
-    await _firestore.collection('orders').doc(orderId).update({
-      'status': status,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  // Get order statistics for dashboard
-  Future<Map<String, dynamic>> getOrderStatistics() async {
-    try {
-      final ordersSnapshot = await _firestore.collection('orders').get();
-
-      int pendingOrders = 0;
-      int deliveredOrders = 0;
-      int confirmedOrders = 0;
-      int outForDeliveryOrders = 0;
-      int cancelledOrders = 0;
-
-      for (final doc in ordersSnapshot.docs) {
-        final order = doc.data() as Map<String, dynamic>? ?? {};
-        final status = order['status'] as String? ?? 'pending';
-
-        if (status == 'pending') {
-          pendingOrders++;
-        } else if (status == 'delivered') {
-          deliveredOrders++;
-        } else if (status == 'confirmed') {
-          confirmedOrders++;
-        } else if (status == 'out_for_delivery') {
-          outForDeliveryOrders++;
-        } else if (status == 'cancelled') {
-          cancelledOrders++;
-        }
-      }
-
-      return {
-        'totalOrders': ordersSnapshot.size,
-        'pendingOrders': pendingOrders,
-        'deliveredOrders': deliveredOrders,
-        'confirmedOrders': confirmedOrders,
-        'outForDeliveryOrders': outForDeliveryOrders,
-        'cancelledOrders': cancelledOrders,
-      };
-    } catch (e) {
-      throw Exception('Failed to get order statistics: $e');
-    }
-  }
-
-  // USER MANAGEMENT METHODS
+  // ========= USER MANAGEMENT METHODS =========
 
   // Get user statistics
   Future<Map<String, dynamic>> getUserStatistics() async {
@@ -423,6 +480,7 @@ class AdminService {
     }
   }
 
+  // Update user (with improved error handling)
   Future<void> updateUser(String userId, Map<String, dynamic> updates) async {
     try {
       if (userId.isEmpty) {

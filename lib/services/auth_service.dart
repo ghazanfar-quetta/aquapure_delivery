@@ -1,4 +1,6 @@
+// lib/services/auth_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // ⬅ REQUIRED for Firestore access
 import 'firebase_rest_auth.dart';
 
 class AuthService {
@@ -12,7 +14,9 @@ class AuthService {
   String? _currentUserId;
   Map<String, dynamic>? _currentUserData;
 
-  // Sign up using REST API
+  // ---------------------------------------------------------------------------
+  // SIGNUP (REST + FirebaseAuth SDK FIX)
+  // ---------------------------------------------------------------------------
   Future<Map<String, dynamic>?> signUpWithEmail(
     String email,
     String password,
@@ -23,78 +27,134 @@ class AuthService {
     try {
       print('🔄 Starting signup process for: $email');
 
-      // Use REST API for authentication
+      // 1. REST Signup
       final authResult =
           await FirebaseRestAuth.signUpWithEmail(email, password);
 
       if (authResult != null && authResult['localId'] != null) {
         final userId = authResult['localId'];
 
-        print('✅ Auth successful, saving user data to Firestore...');
+        print('✅ REST Auth successful, User ID: $userId');
 
-        // Save user data to Firestore
-        await _firestore.collection('users').doc(userId).set({
+        // ---------------------------------------------------------------------
+        // 2. CRITICAL FIX: Login using FirebaseAuth SDK so Firestore recognizes user
+        // ---------------------------------------------------------------------
+        try {
+          await FirebaseAuth.instance.signInWithEmailAndPassword(
+            email: email.trim(),
+            password: password.trim(),
+          );
+          print('🔥 FirebaseAuth SDK login successful — Firestore will work.');
+        } catch (sdkError) {
+          print('❌ FirebaseAuth SDK login failed: $sdkError');
+        }
+
+        // 3. Prepare Firestore user data
+        final userData = {
           'uid': userId,
-          'email': email,
-          'name': name,
-          'phone': phone,
-          'address': address,
+          'email': email.trim(),
+          'name': name.trim(),
+          'phone': phone.trim(),
+          'address': address.trim(),
           'createdAt': FieldValue.serverTimestamp(),
-        });
-
-        // Store current user session
-        _currentUserId = userId;
-        _currentUserData = {
-          'uid': userId,
-          'email': email,
-          'name': name,
-          'phone': phone,
-          'address': address,
+          'updatedAt': FieldValue.serverTimestamp(),
+          'isActive': true,
         };
 
-        print('✅ User created and session stored for: $name');
+        // 4. Save to Firestore
+        try {
+          await _firestore.collection('users').doc(userId).set(userData);
+          print('✅ Firestore profile created for UID: $userId');
+        } catch (firestoreError) {
+          print('❌ Firestore write error: $firestoreError');
+          print(
+              '⚠️ User exists in Auth but Firestore profile was NOT created.');
+          rethrow;
+        }
+
+        _currentUserId = userId;
+        _currentUserData = userData;
+
         return _currentUserData;
       } else {
-        print('❌ Auth result is null or missing localId');
+        print('❌ REST Auth failed: No localId returned');
         return null;
       }
     } catch (e) {
-      print('🔥 Auth service error: $e');
+      print('🔥 Signup Error: $e');
+
+      if (e.toString().contains('permission-denied')) {
+        print('🔐 Firestore permission-denied! Fix rules or token.');
+      }
+
       rethrow;
     }
   }
 
-  // Real login with REST API
+  // ---------------------------------------------------------------------------
+  // LOGIN (REST + FirebaseAuth SDK FIX)
+  // ---------------------------------------------------------------------------
   Future<Map<String, dynamic>?> signInWithEmail(
       String email, String password) async {
     try {
-      print('🔄 Starting login process for: $email');
+      print('🔄 Starting login for: $email');
 
-      // First try REST API login
+      // 1. REST Login
       final authResult =
           await FirebaseRestAuth.signInWithEmail(email, password);
 
       if (authResult != null && authResult['localId'] != null) {
         final userId = authResult['localId'];
 
-        // Get user data from Firestore
+        print('✅ REST Auth login: UID = $userId');
+
+        // ---------------------------------------------------------------------
+        // 2. CRITICAL FIX: Also login using FirebaseAuth SDK for Firestore
+        // ---------------------------------------------------------------------
+        try {
+          await FirebaseAuth.instance.signInWithEmailAndPassword(
+            email: email.trim(),
+            password: password.trim(),
+          );
+          print('🔥 FirebaseAuth SDK login successful — Firestore unlocked.');
+        } catch (sdkError) {
+          print('❌ FirebaseAuth SDK login failed: $sdkError');
+        }
+
+        // 3. Load Firestore user
         final userDoc = await _firestore.collection('users').doc(userId).get();
 
         if (userDoc.exists) {
           final userData = userDoc.data()!;
 
-          // Store current user session
           _currentUserId = userId;
           _currentUserData = userData;
 
-          print('✅ User signed in: ${userData['name']}');
+          print('✅ User data loaded: ${userData['name']}');
           return userData;
         } else {
-          print('❌ User document not found in Firestore');
-          return null;
+          print('⚠️ No Firestore profile found — creating new one...');
+
+          final newData = {
+            'uid': userId,
+            'email': email.trim(),
+            'name': 'User',
+            'phone': '',
+            'address': '',
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+            'isActive': true,
+          };
+
+          await _firestore.collection('users').doc(userId).set(newData);
+
+          _currentUserId = userId;
+          _currentUserData = newData;
+
+          return newData;
         }
       } else {
-        print('❌ Auth result is null or missing localId');
+        print('❌ REST Login failed: missing localId');
         return null;
       }
     } catch (e) {
@@ -103,23 +163,62 @@ class AuthService {
     }
   }
 
-  // Get current user data
+  // ---------------------------------------------------------------------------
+  // USER SESSION
+  // ---------------------------------------------------------------------------
   Map<String, dynamic>? get currentUserData => _currentUserData;
   String? get currentUserId => _currentUserId;
 
-  // Check if user is logged in
   bool get isLoggedIn => _currentUserId != null;
 
-  // Sign out
   Future<void> signOut() async {
     _currentUserId = null;
     _currentUserData = null;
+    await FirebaseAuth.instance.signOut();
     print('✅ User signed out');
   }
 
-  // Initialize user session on app start (call this in main.dart or splash screen)
-  Future<void> initializeUserSession() async {
-    // You can add logic here to check if user was previously logged in
-    // For now, we'll rely on the manual login
+  // ---------------------------------------------------------------------------
+  // USER HELPERS
+  // ---------------------------------------------------------------------------
+  Future<Map<String, dynamic>?> getUserById(String userId) async {
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      return doc.data();
+    } catch (e) {
+      print('❌ Error while fetching user by ID: $e');
+      return null;
+    }
+  }
+
+  Future<void> updateUserProfile(
+    String userId,
+    Map<String, dynamic> updates,
+  ) async {
+    try {
+      await _firestore.collection('users').doc(userId).update({
+        ...updates,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      print('✅ Profile updated for: $userId');
+    } catch (e) {
+      print('❌ Profile update failed: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteUserAccount(String userId) async {
+    try {
+      await _firestore.collection('users').doc(userId).delete();
+      print('⚠️ Firestore user data deleted. Auth still exists.');
+
+      _currentUserId = null;
+      _currentUserData = null;
+
+      print('✅ Local session cleared.');
+    } catch (e) {
+      print('❌ Account delete error: $e');
+      rethrow;
+    }
   }
 }
