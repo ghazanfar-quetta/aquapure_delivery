@@ -284,14 +284,18 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                         : const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.login, size: 20),
+                              Icon(
+                                Icons.login,
+                                size: 20,
+                                color: Colors.lightBlueAccent,
+                              ),
                               SizedBox(width: 10),
                               Text(
                                 'Login as Administrator',
                                 style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.lightBlueAccent),
                               ),
                             ],
                           ),

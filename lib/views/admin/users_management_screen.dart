@@ -52,32 +52,41 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
           // Header with stats
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              padding: const EdgeInsets.all(0.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const Center(
+                    child: Column(
+                      children: [
+                        Text(
+                          'Users Management',
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'View user accounts and information',
+                          style: TextStyle(color: Colors.grey, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        'Users Management',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'View user accounts and information',
-                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      Chip(
+                        backgroundColor: Colors.blue.shade50,
+                        label: Text(
+                          'Total ${_users.length} Users',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ],
                   ),
-                  Chip(
-                    backgroundColor: Colors.blue.shade50,
-                    label: Text(
-                      '${_users.length} Users',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
+
+                  // Your existing users list/content goes here
                 ],
               ),
             ),

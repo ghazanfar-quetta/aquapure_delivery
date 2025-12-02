@@ -70,37 +70,49 @@ class _OrdersManagementScreenState extends State<OrdersManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(0.0),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Orders Management',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              const SizedBox(height: 16),
+              const Center(
+                child: Text(
+                  'Orders Management',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
               ),
-              DropdownButton<String>(
-                value: _filterStatus,
-                items: const [
-                  DropdownMenuItem(value: 'all', child: Text('All')),
-                  DropdownMenuItem(value: 'pending', child: Text('Pending')),
-                  DropdownMenuItem(
-                      value: 'confirmed', child: Text('Confirmed')),
-                  DropdownMenuItem(
-                      value: 'out_for_delivery',
-                      child: Text('Out for Delivery')),
-                  DropdownMenuItem(
-                      value: 'delivered', child: Text('Delivered')),
-                  DropdownMenuItem(
-                      value: 'cancelled', child: Text('Cancelled')),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  DropdownButton<String>(
+                    value: _filterStatus,
+                    items: const [
+                      DropdownMenuItem(value: 'all', child: Text('All')),
+                      DropdownMenuItem(
+                          value: 'pending', child: Text('Pending')),
+                      DropdownMenuItem(
+                          value: 'confirmed', child: Text('Confirmed')),
+                      DropdownMenuItem(
+                        value: 'out_for_delivery',
+                        child: Text('Out for Delivery'),
+                      ),
+                      DropdownMenuItem(
+                          value: 'delivered', child: Text('Delivered')),
+                      DropdownMenuItem(
+                          value: 'cancelled', child: Text('Cancelled')),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _filterStatus = value!;
+                      });
+                    },
+                  ),
                 ],
-                onChanged: (value) {
-                  setState(() {
-                    _filterStatus = value!;
-                  });
-                },
               ),
+              // Your existing orders list/content goes here
             ],
           ),
           const SizedBox(height: 16),

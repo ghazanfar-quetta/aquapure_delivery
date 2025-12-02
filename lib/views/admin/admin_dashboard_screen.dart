@@ -5,7 +5,7 @@ import 'package:aquapure_delivery/views/admin/products_management_screen.dart';
 import 'package:aquapure_delivery/views/admin/orders_management_screen.dart';
 import 'package:aquapure_delivery/views/admin/users_management_screen.dart';
 import 'package:aquapure_delivery/views/admin/reports_screen.dart';
-import 'package:aquapure_delivery/views/auth/login_screen.dart'; // Add your regular login screen
+import 'package:aquapure_delivery/views/auth/login_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -79,22 +79,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin Dashboard'),
+        title: const Text('Taskin Pure - Admin'),
         backgroundColor: Colors.blue.shade800,
         foregroundColor: Colors.white,
         elevation: 0,
+        automaticallyImplyLeading: false,
+        centerTitle: true,
         actions: [
-          // Display admin email if available
-          if (_adminService.getCurrentAdminEmail() != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Center(
-                child: Text(
-                  _adminService.getCurrentAdminEmail()!,
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ),
-            ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _logout,

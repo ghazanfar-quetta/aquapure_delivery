@@ -47,12 +47,12 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Welcome Header
           const Text(
-            'Admin Dashboard',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            'Dashboard',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(

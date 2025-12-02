@@ -98,7 +98,7 @@ class _ProductsManagementScreenState extends State<ProductsManagementScreen> {
               children: [
                 Text(
                   'Products Management',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
