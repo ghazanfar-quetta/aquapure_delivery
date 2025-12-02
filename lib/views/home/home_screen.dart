@@ -102,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
-          'AquaPure',
+          'Taskeen Pure',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,

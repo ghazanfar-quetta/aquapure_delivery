@@ -16,19 +16,27 @@ void main() async {
   bool firebaseInitialized = false;
 
   try {
-    // Try to initialize Firebase but don't let it block forever.
-    // If it doesn't finish within 10 seconds we'll catch a TimeoutException.
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.android,
-    ).timeout(
-      const Duration(seconds: 10),
-      onTimeout: () {
-        throw Exception('Firebase.initializeApp() timed out after 10s');
-      },
-    );
+    // Check if Firebase is already initialized before initializing
+    if (Firebase.apps.isEmpty) {
+      print('🔄 Initializing Firebase...');
 
-    firebaseInitialized = true;
-    print('✅ Firebase.initializeApp() completed');
+      // Try to initialize Firebase but don't let it block forever.
+      // If it doesn't finish within 10 seconds we'll catch a TimeoutException.
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.android,
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Firebase.initializeApp() timed out after 10s');
+        },
+      );
+
+      firebaseInitialized = true;
+      print('✅ Firebase.initializeApp() completed');
+    } else {
+      print('✅ Firebase is already initialized');
+      firebaseInitialized = true;
+    }
   } catch (e, st) {
     initError = e;
     print('🔥 Firebase initialization error: $e');

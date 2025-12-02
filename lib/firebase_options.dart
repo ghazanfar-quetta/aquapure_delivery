@@ -7,6 +7,6 @@ class DefaultFirebaseOptions {
         appId: '1:598128980583:android:cd262b9fc05b77e3f31ac2',
         messagingSenderId: '598128980583',
         projectId: 'aquapure-delivery',
-        storageBucket: 'aquapure-delivery.appspot.com', // FIXED
+        storageBucket: "aquapure-delivery.firebasestorage.app",
       );
 }
